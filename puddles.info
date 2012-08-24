@@ -1,0 +1,4 @@
+name = Puddles
+description = Sets up a socket connection to a Drips (https://github.com/evanbarter/drips) server and refreshes the page on file changes.
+core = 7.x
+version = 7.x-1.0

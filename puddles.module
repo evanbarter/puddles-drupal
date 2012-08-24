@@ -1,0 +1,58 @@
+<?php
+
+/**
+ * Implemention of hook_menu().
+ */
+function puddles_menu() {
+  $items = array();
+
+  $items['admin/config/system/puddles'] = array(
+    'title' => 'Puddles',
+    'description' => 'Configure Puddles to listen for Drips events.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('puddles_config_form'),
+    'access arguments' => array('administer site configuration'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function puddles_init() {
+  $server = variable_get('puddles_drips_server', '');
+  if (variable_get('puddles_enabled', FALSE) && strlen($server) > 0) {
+    drupal_add_js(drupal_get_path('module', 'puddles') . '/js/socket.io.min.js', 'file');
+    drupal_add_js("var sandbox = io.connect('$server');
+    sandbox.on('connect', function () {
+      sandbox.on('event', function (data) {
+        window.location.reload();
+      })
+    })", array('type' => 'inline', 'scope' => 'footer'));
+  }
+}
+
+/**
+ * Module configuration form.
+ */
+function puddles_config_form($form, &$form_state) {
+  $form = array();
+
+  $form['puddles_enabled'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable Puddles'),
+    '#description' => t('If this is selected then this module will inject Javascript in to every page to contact a Drips server.'),
+    '#default_value' => variable_get('puddles_enabled', FALSE),
+  );
+
+  $form['puddles_drips_server'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Drips Server'),
+    '#description' => t('For example: !example', array('!example' => 'http://localhost:8080/mysite')),
+    '#default_value' => variable_get('puddles_drips_server', ''),
+    '#required' => TRUE,
+  );
+
+  return system_settings_form($form);
+}
