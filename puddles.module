@@ -8,7 +8,7 @@ function puddles_menu() {
 
   $items['admin/config/system/puddles'] = array(
     'title' => 'Puddles',
-    'description' => 'Configure Puddles to listen for Drips events.',
+    'description' => 'Configure Puddles to listen for Puddles server events.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('puddles_config_form'),
     'access arguments' => array('administer site configuration'),
@@ -21,15 +21,13 @@ function puddles_menu() {
  * Implementation of hook_init().
  */
 function puddles_init() {
-  $server = variable_get('puddles_drips_server', '');
+  $server = variable_get('puddles_server', '');
+  $halt_on_overlay = variable_get('puddles_halt_on_overlay', TRUE);
   if (variable_get('puddles_enabled', FALSE) && strlen($server) > 0) {
-    drupal_add_js(drupal_get_path('module', 'puddles') . '/js/socket.io.min.js', 'file');
-    drupal_add_js("var sandbox = io.connect('$server');
-    sandbox.on('connect', function () {
-      sandbox.on('event', function (data) {
-        window.location.reload();
-      })
-    })", array('type' => 'inline', 'scope' => 'footer'));
+    $js_path  = drupal_get_path('module', 'puddles') . '/js/';
+    drupal_add_js($js_path . 'socket.io.min.js', 'file');
+    drupal_add_js($js_path . 'puddles.js', array('type' => 'file', 'scope' => 'footer'));
+    drupal_add_js(array('puddles' => array('server' => $server, 'halt_on_overlay' => $halt_on_overlay)), 'setting');
   }
 }
 
@@ -42,17 +40,26 @@ function puddles_config_form($form, &$form_state) {
   $form['puddles_enabled'] = array(
     '#type' => 'checkbox',
     '#title' => t('Enable Puddles'),
-    '#description' => t('If this is selected then this module will inject Javascript in to every page to contact a Drips server.'),
+    '#description' => t('If this is selected then this module will add Javascript on every page to connect to a Puddles server.'),
     '#default_value' => variable_get('puddles_enabled', FALSE),
   );
 
-  $form['puddles_drips_server'] = array(
+  $form['puddles_server'] = array(
     '#type' => 'textfield',
-    '#title' => t('Drips Server'),
+    '#title' => t('Puddles Server'),
     '#description' => t('For example: !example', array('!example' => 'http://localhost:8080/mysite')),
-    '#default_value' => variable_get('puddles_drips_server', ''),
+    '#default_value' => variable_get('puddles_server', ''),
     '#required' => TRUE,
   );
+
+  if (module_exists('overlay')) {
+    $form['puddles_halt_on_overlay'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Ignore changes when the Overlay is open'),
+      '#description' => t('If this option is checked and the Overlay is open, automatic reloads will be disabled.'),
+      '#default_value' => variable_get('puddles_halt_on_overlay', TRUE),
+    );
+  }
 
   return system_settings_form($form);
 }
